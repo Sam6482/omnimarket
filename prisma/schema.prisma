@@ -1,0 +1,128 @@
+// Fase A: estructura de dominio y modelos para Auth.js.
+// Prisma ORM 6.19.3: datasource con DATABASE_URL pooled y DIRECT_URL para migraciones.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  createdOrders Order[]   @relation("CreatedOrders")
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionToken])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model Product {
+  id         String      @id @default(cuid())
+  sku        String      @unique
+  name       String
+  category   String
+  priceCents Int
+  costCents  Int
+  stock      Int         @default(0)
+  orderItems OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([category])
+}
+
+model Order {
+  id            String       @id @default(cuid())
+  number        Int          @unique @default(autoincrement())
+  customerName  String
+  customerEmail String
+  status        OrderStatus  @default(PENDING)
+  position      Float        @default(1000)
+  totalCents    Int          @default(0)
+  costCents     Int          @default(0)
+  itemsCount    Int          @default(0)
+  createdById   String?
+  createdBy     User?        @relation("CreatedOrders", fields: [createdById], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  events        OrderEvent[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status, position])
+  @@index([createdAt])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  productId      String
+  quantity       Int
+  unitPriceCents Int
+  unitCostCents  Int
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderEvent {
+  id         String       @id @default(cuid())
+  orderId    String
+  eventType  String
+  fromStatus OrderStatus?
+  toStatus   OrderStatus?
+  actorId    String?
+  createdAt  DateTime     @default(now())
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
