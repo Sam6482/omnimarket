@@ -14,7 +14,7 @@ Estados: Pendiente · En desarrollo · Implementado sin verificar · Verificado 
 | R6 | Kanban D&D con persistencia optimista | 20% | P0 | B | Movimiento instantáneo; persiste tras recarga; revierte + toast si falla | E2E 3 + prueba manual sin red | Pendiente |
 | R7 | CRUD avanzado | (R6) | P0 | B (UI) / A (API) | Crear, editar, eliminar pedidos y productos con Zod cliente + servidor | E2E 2 + pruebas de esquemas | Pendiente |
 | R8 | Bulk Update | (R6) | P0 | B (UI) / A (API) | N filas → nuevo estado; transacción todo-o-nada; toast | Prueba de integración + manual | Pendiente |
-| R9 | OAuth 2.0 Google + GitHub exclusivo | — | P0 | C | Login con ambos en producción; rutas privadas redirigen a `/login` | E2E 1 + prueba manual con cuenta ajena | Pendiente |
+| R9 | OAuth 2.0 Google + GitHub exclusivo | — | P0 | C | Login con ambos en producción; rutas privadas redirigen a `/login` | E2E 1 + prueba manual con cuenta ajena | En desarrollo |
 | R10 | Skeletons en operaciones asíncronas | — | P0 | B | `loading.tsx` + skeletons por componente; sin spinners genéricos | Capturas | Pendiente |
 | R11 | Toast / reversión en Kanban y Bulk | — | P0 | B | 100 % de mutaciones con toast de resultado | E2E + manual | Pendiente |
 | R12 | 10 pruebas unitarias/integración | 15% | P0 | Todos | ≥ 10 (meta 15–20) en cálculo financiero, moneda, Zod, filtrado | Job CI Vitest | Pendiente |
