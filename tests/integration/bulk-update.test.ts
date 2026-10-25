@@ -26,7 +26,7 @@ function createDb(initial: Row[], options: { concurrentChangeOn?: string } = {})
           ),
           aggregate: vi.fn(async ({ where }: { where: { status: OrderStatus } }) => {
             const positions = rows.filter((row) => row.status === where.status).map((row) => row.position);
-            return { _max: { position: positions.length ? Math.max(...positions) : null } };
+            return { _min: { position: positions.length ? Math.min(...positions) : null } };
           }),
           updateMany: vi.fn(
             async ({ where, data }: { where: { id: string; updatedAt: Date }; data: Partial<Row> }) => {
@@ -68,15 +68,18 @@ const seed = (): Row[] => [
 ];
 
 describe("bulkUpdateOrderStatus", () => {
-  it("mueve los pedidos al final de la columna destino y registra un evento por cambio", async () => {
+  it("mueve los pedidos al inicio de la columna destino, en orden, y registra un evento por cambio", async () => {
     const store = createDb(seed());
 
     const result = await bulkUpdateOrderStatus({ input: { ids: ["o2", "o1"], status: "SHIPPED" }, actorId: "user-1" }, store.db);
 
     expect(result).toEqual({ ok: true, updated: 2, unchanged: 0 });
     const byId = Object.fromEntries(store.rows().map((row) => [row.id, row]));
-    expect(byId.o2).toMatchObject({ status: "SHIPPED", position: 2000 + POSITION_STEP });
-    expect(byId.o1).toMatchObject({ status: "SHIPPED", position: 2000 + 2 * POSITION_STEP });
+    // Columna SHIPPED empieza en 1000: o2 y o1 quedan arriba, en el orden recibido.
+    expect(byId.o2).toMatchObject({ status: "SHIPPED", position: 1000 - 2 * POSITION_STEP });
+    expect(byId.o1).toMatchObject({ status: "SHIPPED", position: 1000 - POSITION_STEP });
+    const shipped = store.rows().filter((row) => row.status === "SHIPPED").sort((a, b) => a.position - b.position);
+    expect(shipped.map((row) => row.id)).toEqual(["o2", "o1", "o3", "o4"]);
     expect(byId.o1.updatedAt.getTime()).toBeGreaterThan(T0.getTime());
     expect(store.events()).toEqual([
       expect.objectContaining({ orderId: "o2", fromStatus: "PENDING", toStatus: "SHIPPED", actorId: "user-1" }),

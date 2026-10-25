@@ -145,7 +145,7 @@ Reglas:
 
 - `POST /api/orders`: el servidor toma `priceCents`/`costCents` de cada `Product` y calcula `totalCents`/`costCents` del pedido. `quantity` entero 1–999. `items` no vacío. Valida stock (P1).
 - `PATCH …/status`: movimiento de Kanban. Si se envía `expectedUpdatedAt` y no coincide → 409 `CONFLICT` (el cliente revierte y refresca).
-- `PATCH /api/orders/bulk`: transacción todo-o-nada. Si algún id no existe → 404 con `details.missingIds` y no se modifica nada. Si otro usuario modificó alguno durante la operación → 409 `CONFLICT` (`details.orderIds`) y se revierte todo. Los que ya están en el estado destino no se tocan (`unchanged`). Los movidos van al final de la columna destino, en el orden recibido.
+- `PATCH /api/orders/bulk`: transacción todo-o-nada. Si algún id no existe → 404 con `details.missingIds` y no se modifica nada. Si otro usuario modificó alguno durante la operación → 409 `CONFLICT` (`details.orderIds`) y se revierte todo. Los que ya están en el estado destino no se tocan (`unchanged`). Los movidos van al inicio de la columna destino, en el orden recibido (siguen visibles en las primeras 50 de `kanban-status`).
 - Cada cambio de estado registra un `OrderEvent` (P1).
 
 `Order` (lista):

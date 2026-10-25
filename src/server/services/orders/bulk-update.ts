@@ -10,8 +10,9 @@ import { ORDER_STATUS_CHANGED_EVENT, nextVersion } from "@/server/services/order
  *   y no se modifica nada. Si otro usuario cambió un pedido durante la operación → CONFLICT
  *   y se revierte todo (First Writer Wins, igual que el movimiento individual).
  * - Los pedidos que ya están en el estado destino no se tocan (no cuentan como actualizados).
- * - Los pedidos movidos se colocan al final de la columna destino, en el orden recibido,
- *   para no chocar con las posiciones existentes del Kanban.
+ * - Los pedidos movidos se colocan al INICIO de la columna destino, en el orden recibido.
+ *   Así quedan dentro de las primeras 50 tarjetas que carga el Kanban (kanban-status) y no
+ *   chocan con posiciones existentes (misma regla que el movimiento individual del tablero).
  * - Cada cambio de estado registra un OrderEvent en la misma transacción.
  */
 
@@ -63,11 +64,12 @@ export async function bulkUpdateOrderStatus(
       const toMove = ids.map((id) => byId.get(id) as OrderSnapshot).filter((order) => order.status !== status);
       if (toMove.length === 0) return { ok: true, updated: 0, unchanged: ids.length };
 
-      const { _max } = await tx.order.aggregate({ where: { status }, _max: { position: true } });
-      let position = _max.position ?? 0;
+      // Posiciones por encima de la primera tarjeta actual: first < second < ... < min(columna).
+      const { _min } = await tx.order.aggregate({ where: { status }, _min: { position: true } });
+      const top = _min.position ?? (toMove.length + 1) * POSITION_STEP;
 
-      for (const order of toMove) {
-        position += POSITION_STEP;
+      for (const [index, order] of toMove.entries()) {
+        const position = top - (toMove.length - index) * POSITION_STEP;
         const { count } = await tx.order.updateMany({
           where: { id: order.id, updatedAt: order.updatedAt },
           data: { status, position, updatedAt: nextVersion(order.updatedAt) },
