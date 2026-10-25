@@ -1,0 +1,55 @@
+# CI de OmniMarket (R12/R14): bloquea la integración y el despliegue si algo falla.
+# Corre en cada Pull Request y en cada push a main.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, pruebas, build y tipos
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Valores FICTICIOS: el build y las pruebas no se conectan a ninguna base.
+      # Nunca poner secretos reales en este archivo.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/omnimarket_ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/omnimarket_ci
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar pnpm (versión de package.json)
+        uses: pnpm/action-setup@v4
+
+      - name: Instalar Node.js con caché de pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Instalar dependencias exactas del lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Pruebas unitarias y de integración (Vitest)
+        run: pnpm test
+
+      - name: Build de producción
+        run: pnpm build
+
+      # Después del build porque next-env.d.ts importa los tipos generados en .next/.
+      - name: Typecheck
+        run: pnpm typecheck
