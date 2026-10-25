@@ -117,6 +117,16 @@ Con `?orderId=…` o `?number=OM-1042` — estado de un pedido:
 
 ---
 
+## Autenticación (Auth.js v5)
+
+- Proveedores: Google y GitHub (OAuth 2.0). Sin Credentials provider.
+- Sesiones en base de datos (`Session`), duración 7 días. Cookie: `__Secure-authjs.session-token` (HTTPS) o `authjs.session-token` (HTTP local).
+- Página: `/login` (`?callbackUrl=/ruta-interna`, `?error=` de Auth.js). Endpoints de Auth.js en `/api/auth/*`.
+- Callbacks OAuth a registrar: `https://<dominio>/api/auth/callback/google` y `https://<dominio>/api/auth/callback/github`.
+- Rutas privadas: `const user = await requireSession(); if (!user) return unauthorizedResponse();` (`@/server/auth`, `@/server/http/errors`).
+- Páginas privadas: `const user = await requirePageSession("/ruta");` → redirige a `/login` sin sesión.
+- Si Auth.js está mal configurado, `requireSession()` devuelve `null` (401), nunca acceso.
+
 ## Endpoints privados (requieren sesión)
 
 ### Pedidos
