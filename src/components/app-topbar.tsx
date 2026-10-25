@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 type AppTopbarProps = {
   sessionUser?: {
@@ -81,20 +82,35 @@ export function AppTopbar({ sessionUser }: AppTopbarProps) {
 
           <div className="h-4 w-px bg-zinc-800" />
 
-          <div className="flex items-center gap-2">
-            <span
-              className={[
-                "h-1.5 w-1.5 rounded-full",
-                sessionUser ? "bg-emerald-500" : "bg-zinc-600",
-              ].join(" ")}
-            />
+          <div className="flex items-center gap-3">
+  <div className="flex items-center gap-2">
+    <span
+      className={[
+        "h-1.5 w-1.5 rounded-full",
+        sessionUser ? "bg-emerald-500" : "bg-zinc-600",
+      ].join(" ")}
+    />
 
-            <span className="max-w-[155px] truncate text-[11px] text-zinc-400">
-              {sessionUser
-                ? sessionUser.name ?? sessionUser.email ?? "Sesión activa"
-                : "Sin sesión"}
-            </span>
-          </div>
+    <span className="max-w-[155px] truncate text-[11px] text-zinc-400">
+      {sessionUser
+        ? sessionUser.name ?? sessionUser.email ?? "Sesión activa"
+        : "Sin sesión"}
+    </span>
+  </div>
+
+  {sessionUser && (
+    <button
+      type="button"
+      data-testid="logout-button"
+      onClick={() => {
+        void signOut({ redirectTo: "/login" });
+      }}
+      className="rounded-md border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 text-[11px] font-medium text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+    >
+      Cerrar sesión
+    </button>
+  )}
+</div>
         </div>
       </div>
     </header>

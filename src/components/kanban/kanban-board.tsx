@@ -60,14 +60,13 @@ export function KanbanBoard({
 
     const snapshot = orders;
 
-    const lastPosition = Math.max(
-      0,
-      ...orders
-        .filter((order) => order.status === nextStatus)
-        .map((order) => order.position)
-    );
+    const columnPositions = orders
+  .filter((order) => order.status === nextStatus)
+  .map((order) => order.position);
 
-    const nextPosition = lastPosition + 1000;
+const nextPosition = columnPositions.length
+  ? Math.min(...columnPositions) - 1000
+  : 1000;
 
     // La tarjeta se mueve inmediatamente.
     setOrders((previous) =>
