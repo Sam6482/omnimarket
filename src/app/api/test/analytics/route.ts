@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { OrderStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
 import { formatOrderNumber } from "@/lib/order-number";
+import { percentage, summarizeFinance } from "@/lib/finance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,11 +64,6 @@ function readDate(value: string | null): Date | null {
   }
 
   return parsed;
-}
-
-function percentage(part: number, total: number): number {
-  if (total === 0) return 0;
-  return Math.round((part / total) * 1000) / 10;
 }
 
 export async function GET(request: NextRequest) {
@@ -191,7 +187,6 @@ export async function GET(request: NextRequest) {
       costCents += group._sum.costCents ?? 0;
     }
 
-    const grossMarginCents = revenueCents - costCents;
     const totalPages = Math.ceil(totalOrders / limit);
 
     const data = orders.map((order) => {
@@ -216,17 +211,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         summary: {
-          revenueCents,
-          orders: totalOrders,
-          averageTicketCents:
-            totalOrders > 0
-              ? Math.round(revenueCents / totalOrders)
-              : 0,
-          grossMarginCents,
-          grossMarginPct: percentage(
-            grossMarginCents,
-            revenueCents
-          ),
+          ...summarizeFinance({ revenueCents, costCents, orders: totalOrders }),
           byStatus,
         },
         data,
