@@ -139,13 +139,13 @@ Con `?orderId=…` o `?number=OM-1042` — estado de un pedido:
 | PATCH | `/api/orders/:id` | campos editables (`customerName`, `customerEmail`, `items`) | `Order` |
 | DELETE | `/api/orders/:id` | — | 204 |
 | PATCH | `/api/orders/:id/status` | `{ status, position, expectedUpdatedAt? }` | `{ id, status, position, updatedAt }` |
-| PATCH | `/api/orders/bulk` | `{ ids: string[] (1–100, únicos), status }` | `{ updated: number }` |
+| PATCH | `/api/orders/bulk` | `{ ids: string[] (1–100, únicos), status }` | `{ updated: number, unchanged: number }` |
 
 Reglas:
 
 - `POST /api/orders`: el servidor toma `priceCents`/`costCents` de cada `Product` y calcula `totalCents`/`costCents` del pedido. `quantity` entero 1–999. `items` no vacío. Valida stock (P1).
 - `PATCH …/status`: movimiento de Kanban. Si se envía `expectedUpdatedAt` y no coincide → 409 `CONFLICT` (el cliente revierte y refresca).
-- `PATCH /api/orders/bulk`: transacción todo-o-nada. Si algún id no existe → 404 con `details.missingIds` y no se modifica nada.
+- `PATCH /api/orders/bulk`: transacción todo-o-nada. Si algún id no existe → 404 con `details.missingIds` y no se modifica nada. Si otro usuario modificó alguno durante la operación → 409 `CONFLICT` (`details.orderIds`) y se revierte todo. Los que ya están en el estado destino no se tocan (`unchanged`). Los movidos van al final de la columna destino, en el orden recibido.
 - Cada cambio de estado registra un `OrderEvent` (P1).
 
 `Order` (lista):
