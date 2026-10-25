@@ -14,6 +14,7 @@ type AppTopbarProps = {
 const navigation = [
   { label: "Dashboard", href: "/" },
   { label: "Inventario", href: "/inventory" },
+  { label: "Pedidos", href: "/orders" },
   { label: "Kanban", href: "/kanban" },
 ];
 
