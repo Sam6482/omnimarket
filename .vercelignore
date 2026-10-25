@@ -1,0 +1,15 @@
+# Archivos que NUNCA se suben a Vercel al desplegar desde la terminal.
+# Secretos locales: las variables reales se configuran en el panel de Vercel.
+.env
+.env.*
+!.env.example
+
+# Generados o pesados (Vercel instala y compila por su cuenta).
+node_modules
+.next
+.vercel
+coverage
+playwright-report
+test-results
+*.log
+*.tsbuildinfo
