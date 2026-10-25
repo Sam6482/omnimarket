@@ -9,7 +9,7 @@ Estados: Pendiente · En desarrollo · Implementado sin verificar · Verificado 
 | R1 | Next.js 14+, App Router, TypeScript, Tailwind | 25% | P0 | A | `pnpm typecheck` y `pnpm build` sin errores; TS strict | Job CI | Pendiente |
 | R2 | Renderizado sin errores de consola | (R1) | P0 | C | Fixture E2E falla ante `console.error` en todas las páginas | Reporte Playwright | Pendiente |
 | R3 | `GET /api/test/analytics` paginado < 300 ms | 25% | P0 | A | Valida `page`/`limit` (máx. 100); p95 < 300 ms en producción caliente | Script de medición + `Server-Timing` | Pendiente |
-| R4 | `POST /api/test/reset-data` | (R3) | P0 | A | Restaura dataset determinista; idempotente; no borra sesiones | Prueba de integración | Pendiente |
+| R4 | `POST /api/test/reset-data` | (R3) | P0 | A | Restaura dataset determinista; idempotente; no borra sesiones | Prueba de integración + prueba real en Neon `dev` (40/1200/3100; `production` intacta) | Implementado sin verificar (falta producción) |
 | R5 | `GET /api/test/kanban-status` | (R3) | P0 | A | Refleja estado tras D&D sin caché | Aserción en E2E 3 | Pendiente |
 | R6 | Kanban D&D con persistencia optimista | 20% | P0 | B | Movimiento instantáneo; persiste tras recarga; revierte + toast si falla | E2E 3 + prueba manual sin red | Pendiente |
 | R7 | CRUD avanzado | (R6) | P0 | B (UI) / A (API) | Crear, editar, eliminar pedidos y productos con Zod cliente + servidor | E2E 2 + pruebas de esquemas | Pendiente |
@@ -38,7 +38,7 @@ Estados: Pendiente · En desarrollo · Implementado sin verificar · Verificado 
 | U10 | `computePosition` reordenamiento Kanban | Lógica | C | Pendiente |
 | I1 | analytics devuelve forma paginada | Integración | A | Pendiente |
 | I2 | bulk hace rollback si falta un id | Integración | A | Pendiente |
-| I3 | reset-data idempotente | Integración | A | Pendiente |
+| I3 | reset-data idempotente | Integración | A | Implementado |
 
 ## Mejoras competitivas (no oficiales)
 
