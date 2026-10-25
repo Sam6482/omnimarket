@@ -1,5 +1,7 @@
-# CI de OmniMarket (R12/R14): bloquea la integración y el despliegue si algo falla.
-# Corre en cada Pull Request y en cada push a main.
+# CI/CD de OmniMarket (R12/R13/R14).
+# - En cada Pull Request: lint, pruebas, build, tipos y E2E.
+# - En cada push a main: lo mismo y, SOLO si todo pasa, despliegue a producción en Vercel.
+#   Si cualquier job falla, el job `deploy` no se ejecuta y producción no cambia.
 name: CI
 
 on:
@@ -9,7 +11,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # En PR se cancela la ejecución anterior; en main nunca se interrumpe un despliegue.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -111,3 +114,51 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  deploy:
+    name: Deploy a producción (Vercel)
+    # R14: solo se ejecuta si pasaron TODAS las validaciones, y solo para main.
+    needs: [quality, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      PRODUCTION_URL: https://omnimarket-operations-hub-rho.vercel.app
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Desplegar en Vercel (producción)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@65.2.0 deploy --prod --yes --token "$VERCEL_TOKEN"
+
+      - name: Prueba de humo en producción
+        run: |
+          set -euo pipefail
+          check() {
+            local expected="$1" method="$2" path="$3"
+            local code
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$PRODUCTION_URL$path")
+            echo "$method $path -> $code (esperado $expected)"
+            [ "$code" = "$expected" ]
+          }
+          check 200 GET  "/login"
+          check 200 GET  "/api/test/analytics?page=1&limit=50"
+          check 200 GET  "/api/test/kanban-status"
+          check 405 GET  "/api/test/reset-data"
+          check 401 GET  "/api/products"
+          # Página privada sin sesión: debe redirigir a /login.
+          location=$(curl -s -o /dev/null -w "%{redirect_url}" "$PRODUCTION_URL/kanban")
+          echo "GET /kanban -> redirige a: $location"
+          case "$location" in *"/login"*) ;; *) echo "No redirige a /login"; exit 1 ;; esac
