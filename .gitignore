@@ -12,3 +12,5 @@ test-results/
 .env.*
 !.env.example
 .vercel/
+# Sesiones de prueba generadas por Playwright
+e2e/.auth/
