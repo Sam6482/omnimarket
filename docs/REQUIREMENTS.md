@@ -8,8 +8,8 @@ Estados: Pendiente · En desarrollo · Implementado sin verificar · Verificado 
 |---|---|---|---|---|---|---|---|
 | R1 | Next.js 14+, App Router, TypeScript, Tailwind | 25% | P0 | A | `pnpm typecheck` y `pnpm build` sin errores; TS strict | Job CI | Pendiente |
 | R2 | Renderizado sin errores de consola | (R1) | P0 | C | Fixture E2E falla ante `console.error` en todas las páginas | Reporte Playwright | Pendiente |
-| R3 | `GET /api/test/analytics` paginado < 300 ms | 25% | P0 | A | Valida `page`/`limit` (máx. 100); p95 < 300 ms en producción caliente | Script de medición + `Server-Timing` | Pendiente |
-| R4 | `POST /api/test/reset-data` | (R3) | P0 | A | Restaura dataset determinista; idempotente; no borra sesiones | Prueba de integración + prueba real en Neon `dev` (40/1200/3100; `production` intacta) | Implementado sin verificar (falta producción) |
+| R3 | `GET /api/test/analytics` paginado < 300 ms | 25% | P0 | A | Valida `page`/`limit` (máx. 100); p95 < 300 ms en producción caliente | Prod. 25-oct, 1,200 pedidos: `Server-Timing` total 4–8 ms; cliente (incl. internet) mediana 186 ms, p90 198 ms (`scripts/smoke-prod.ps1`) | Verificado |
+| R4 | `POST /api/test/reset-data` | (R3) | P0 | A | Restaura dataset determinista; idempotente; no borra sesiones | Prod. 25-oct: 40/1200/3100 en 815 ms; idempotencia probada en Neon `dev`; GET → 405 | Verificado |
 | R5 | `GET /api/test/kanban-status` | (R3) | P0 | A | Refleja estado tras D&D sin caché | Aserción en E2E 3 | Pendiente |
 | R6 | Kanban D&D con persistencia optimista | 20% | P0 | B | Movimiento instantáneo; persiste tras recarga; revierte + toast si falla | E2E 3 + prueba manual sin red | Pendiente |
 | R7 | CRUD avanzado | (R6) | P0 | B (UI) / A (API) | Crear, editar, eliminar pedidos y productos con Zod cliente + servidor | E2E 2 + pruebas de esquemas | Pendiente |
@@ -20,8 +20,7 @@ Estados: Pendiente · En desarrollo · Implementado sin verificar · Verificado 
 | R12 | 10 pruebas unitarias/integración | 15% | P0 | Todos | ≥ 10 (meta 15–20) en cálculo financiero, moneda, Zod, filtrado | Job CI Vitest | Pendiente |
 | R13 | 3 flujos E2E (auth, creación, D&D) | (R12) | P0 | C (auth) / B (creación, D&D) | Los tres en verde en CI | Artefacto Playwright | Pendiente |
 | R14 | GitHub Actions bloquea despliegue en Vercel | (R12) | P0 | C | Job `deploy` con `needs` de pruebas; auto-deploy de producción desactivado | Captura de pipeline rojo sin deploy | Pendiente |
-| R15 | Despliegue público con SSL válido | 15% | P0 | A | URL `https://` estable y accesible | Prueba de humo en producción | Pendiente |
-
+| R15 | Despliegue público con SSL válido | 15% | P0 | A | URL `https://` estable y accesible | `https://omnimarket-operations-hub-rho.vercel.app` (HTTPS) + `scripts/smoke-prod.ps1` | Verificado |
 ## Pruebas unitarias planificadas (R12)
 
 | # | Prueba | Área PDF | Responsable | Estado |
