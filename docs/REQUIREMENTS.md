@@ -26,10 +26,10 @@ Estados: Pendiente · En desarrollo · Implementado sin verificar · Verificado 
 
 | # | Prueba | Área PDF | Responsable | Estado |
 |---|---|---|---|---|
-| U1 | `averageTicket` caso normal | Cálculo financiero | B | Pendiente |
-| U2 | `averageTicket` con 0 pedidos → 0 | Cálculo financiero | B | Pendiente |
-| U3 | `grossMargin` (incluye costo 0) | Cálculo financiero | B | Pendiente |
-| U4 | `formatCurrency` MXN desde centavos | Formateador | B | Pendiente |
+| U1 | `averageTicket` caso normal | Cálculo financiero | A | Implementado (`tests/unit/finance.test.ts`) |
+| U2 | `averageTicket` con 0 pedidos → 0 | Cálculo financiero | A | Implementado (`tests/unit/finance.test.ts`) |
+| U3 | `grossMargin` (incluye costo 0) | Cálculo financiero | A | Implementado (`tests/unit/finance.test.ts`) |
+| U4 | `formatCurrency` MXN desde centavos | Formateador | A | Implementado (`tests/unit/format.test.ts`) |
 | U5 | `orderCreateSchema` válido | Zod | A | Pendiente |
 | U6 | `orderCreateSchema` inválido | Zod | A | Pendiente |
 | U7 | `bulkUpdateSchema` límites y duplicados | Zod | A | Pendiente |
