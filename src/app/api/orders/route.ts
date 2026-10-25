@@ -1,4 +1,5 @@
 
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/server/auth";
 import { orderQuerySchema } from "@/lib/schemas/order";
@@ -133,6 +134,23 @@ export async function POST(request: NextRequest) {
           },
         },
         { status: 404 }
+      );
+    }
+
+    // Conflicto de la transacción Serializable con otra operación simultánea.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "CONFLICT",
+            message: "Otra operación modificó los datos al mismo tiempo. Intenta de nuevo.",
+            details: {},
+          },
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } }
       );
     }
 
