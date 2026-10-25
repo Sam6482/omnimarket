@@ -1,6 +1,5 @@
 
-import Link from "next/link";
-import { requireSession } from "@/server/auth";
+import { requirePageSession } from "@/server/auth";
 import { orderQuerySchema } from "@/lib/schemas/order";
 import { listOrders } from "@/server/services/orders/list-orders";
 import { OrdersTable } from "@/components/orders/orders-table";
@@ -14,37 +13,11 @@ type Props = {
 };
 
 export default async function OrdersPage({ searchParams }: Props) {
-  const user = await requireSession();
-
-  if (!user) {
-    return (
-      <main className="min-h-[calc(100vh-3.5rem)] bg-[#09090B] px-4 py-10 sm:px-6">
-        <section className="mx-auto max-w-lg rounded-lg border border-zinc-800/80 bg-[#121215] p-6">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-            Acceso restringido
-          </p>
-
-          <h1 className="mt-3 text-xl font-semibold text-zinc-100">
-            Pedidos
-          </h1>
-
-          <p className="mt-2 text-sm text-zinc-400">
-            Inicia sesión para consultar y administrar pedidos.
-          </p>
-
-          <Link
-            href="/"
-            className="mt-5 inline-flex rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 hover:bg-zinc-700"
-          >
-            Volver al dashboard
-          </Link>
-        </section>
-      </main>
-    );
-  }
+    // OAuth: redirige a /login cuando no hay sesión.
+    await requirePageSession("/orders");
 
   const raw = await searchParams;
-
+ 
   const normalized = Object.fromEntries(
     Object.entries(raw).map(([key, value]) => [
       key,

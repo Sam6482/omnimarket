@@ -1,6 +1,5 @@
 
-import Link from "next/link";
-import { requireSession } from "@/server/auth";
+import { requirePageSession } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { productQuerySchema } from "@/lib/schemas/product";
 import { listProducts } from "@/server/services/products/list-products";
@@ -9,40 +8,19 @@ import { InventoryTable } from "@/components/inventory/inventory-table";
 export const dynamic = "force-dynamic";
 
 type Props = {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<
+    Record<string, string | string[] | undefined>
+  >;
 };
 
-export default async function InventoryPage({ searchParams }: Props) {
-  const user = await requireSession();
-
-  if (!user) {
-    return (
-      <main className="min-h-[calc(100vh-3.5rem)] bg-[#09090B] px-4 py-10 sm:px-6">
-        <section className="mx-auto max-w-lg rounded-lg border border-zinc-800/80 bg-[#121215] p-6">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-            Acceso restringido
-          </p>
-
-          <h1 className="mt-3 text-xl font-semibold text-zinc-100">
-            Inventario
-          </h1>
-
-          <p className="mt-2 text-sm text-zinc-400">
-            Inicia sesión para consultar los productos.
-          </p>
-
-          <Link
-            href="/"
-            className="mt-5 inline-flex rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100"
-          >
-            Volver al dashboard
-          </Link>
-        </section>
-      </main>
-    );
-  }
+export default async function InventoryPage({
+  searchParams,
+}: Props) {
+  // OAuth: redirige a /login cuando no hay sesión.
+  await requirePageSession("/inventory");
 
   const raw = await searchParams;
+
   const normalized = Object.fromEntries(
     Object.entries(raw).map(([key, value]) => [
       key,
@@ -63,10 +41,15 @@ export default async function InventoryPage({ searchParams }: Props) {
 
   const [result, categoryRows] = await Promise.all([
     listProducts(query),
+
     prisma.product.findMany({
-      select: { category: true },
+      select: {
+        category: true,
+      },
       distinct: ["category"],
-      orderBy: { category: "asc" },
+      orderBy: {
+        category: "asc",
+      },
     }),
   ]);
 

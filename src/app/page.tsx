@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { prisma } from "@/server/db";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { requirePageSession } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,7 @@ function MetricCard({
 }
 
 export default async function HomePage() {
+  await requirePageSession("/");
   // Se conservan las consultas a PostgreSQL existentes.
   const [groups, productCount, productStock] = await Promise.all([
     prisma.order.groupBy({
