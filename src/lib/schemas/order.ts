@@ -31,3 +31,30 @@ export const orderQuerySchema = z.object({
 );
 
 export type OrderQuery = z.infer<typeof orderQuerySchema>;
+
+export const createOrderSchema = z.object({
+  customerName: z.string().trim().min(1).max(150),
+  customerEmail: z.email(),
+  status: orderStatusSchema.optional(),
+  items: z.array(
+    z.object({
+      productId: z.string().min(1),
+      quantity: z.number().int().min(1).max(999),
+    })
+  ).min(1),
+});
+
+export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+
+
+export const updateOrderSchema = z
+  .object({
+    customerName: z.string().trim().min(1).max(150).optional(),
+    customerEmail: z.email().optional(),
+  })
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "Debes enviar al menos un campo.",
+  });
+
+export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
