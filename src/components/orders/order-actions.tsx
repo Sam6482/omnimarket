@@ -3,6 +3,28 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { formatCurrency } from "@/lib/format";
+
+type Product = {
+  id: string;
+  sku: string;
+  name: string;
+  priceCents: number;
+};
+
+type OrderItem = {
+  productId: string;
+  quantity: number;
+};
+
+type OrderDetail = {
+  customerName: string;
+  customerEmail: string;
+  items: {
+    quantity: number;
+    product: Product;
+  }[];
+};
 
 type Props = {
   order: {
@@ -13,70 +35,198 @@ type Props = {
   };
 };
 
+const inputClass =
+  "w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-indigo-500";
+
 export function OrderActions({ order }: Props) {
   const router = useRouter();
 
   const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState(order.customerName);
   const [email, setEmail] = useState(order.customerEmail);
-  const [busy, setBusy] = useState(false);
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [originalItems, setOriginalItems] = useState<OrderItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+
+  async function openEditor() {
+    setError("");
+    setLoading(true);
+    setEditing(true);
+
+    try {
+      const [detailResponse, catalogResponse] = await Promise.all([
+        fetch(`/api/orders/${encodeURIComponent(order.id)}`, {
+          credentials: "same-origin",
+          cache: "no-store",
+        }),
+        fetch("/api/products?page=1&limit=100", {
+          credentials: "same-origin",
+          cache: "no-store",
+        }),
+      ]);
+
+      if (!detailResponse.ok || !catalogResponse.ok) {
+        throw new Error(
+          "No fue posible cargar los datos. Comprueba tu sesión."
+        );
+      }
+
+      const detail: OrderDetail = await detailResponse.json();
+      const catalog: { data: Product[] } =
+        await catalogResponse.json();
+
+      setName(detail.customerName);
+      setEmail(detail.customerEmail);
+
+      const loadedItems = detail.items.map((item) => ({
+  productId: item.product.id,
+  quantity: item.quantity,
+}));
+
+setItems(loadedItems);
+setOriginalItems(loadedItems.map((item) => ({ ...item })));
+      // Incluye productos ya asociados al pedido,
+      // aunque no aparezcan entre los primeros 100.
+      const productMap = new Map<string, Product>();
+
+      for (const product of catalog.data) {
+        productMap.set(product.id, product);
+      }
+
+      for (const item of detail.items) {
+        if (!productMap.has(item.product.id)) {
+          productMap.set(item.product.id, item.product);
+        }
+      }
+
+      setProducts([...productMap.values()]);
+    } catch (cause) {
+      setEditing(false);
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "No se pudo abrir el editor."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function updateItem(index: number, patch: Partial<OrderItem>) {
+    setItems((previous) =>
+      previous.map((item, i) =>
+        i === index ? { ...item, ...patch } : item
+      )
+    );
+  }
+
+  const estimatedTotal = items.reduce((sum, item) => {
+    const product = products.find(
+      (candidate) => candidate.id === item.productId
+    );
+
+    return sum + (product?.priceCents ?? 0) * item.quantity;
+  }, 0);
+ 
+
+  
+function normalizeItems(lines: OrderItem[]) {
+  const quantities = new Map<string, number>();
+
+  for (const item of lines) {
+    quantities.set(
+      item.productId,
+      (quantities.get(item.productId) ?? 0) + item.quantity
+    );
+  }
+
+  return [...quantities.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([productId, quantity]) => ({
+      productId,
+      quantity,
+    }));
+}
+
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || loading) return;
 
-    if (!name.trim() || !email.trim()) {
-      setError("Completa el nombre y correo del cliente.");
+    const quantities = new Map<string, number>();
+
+    for (const item of items) {
+      quantities.set(
+        item.productId,
+        (quantities.get(item.productId) ?? 0) + item.quantity
+      );
+    }
+
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      items.length === 0 ||
+      items.some(
+        (item) =>
+          !item.productId ||
+          !Number.isInteger(item.quantity) ||
+          item.quantity < 1 ||
+          item.quantity > 999
+      ) ||
+      [...quantities.values()].some((quantity) => quantity > 999)
+    ) {
+      setError("Revisa el cliente, los artículos y las cantidades.");
       return;
     }
 
     setBusy(true);
     setError("");
-    setSuccess("");
 
     try {
       const response = await fetch(
         `/api/orders/${encodeURIComponent(order.id)}`,
         {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
           cache: "no-store",
           body: JSON.stringify({
-            customerName: name.trim(),
-            customerEmail: email.trim(),
-          }),
+  customerName: name.trim(),
+  customerEmail: email.trim(),
+
+  // Solo reemplazamos artículos cuando cambiaron realmente.
+  ...(JSON.stringify(normalizeItems(items)) !==
+  JSON.stringify(normalizeItems(originalItems))
+    ? { items: normalizeItems(items) }
+    : {}),
+}),
         }
       );
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Tu sesión ha expirado.");
-        }
-        if (response.status === 404) {
-          throw new Error("El pedido ya no existe.");
-        }
-        if (response.status === 400) {
-          throw new Error("Los datos no son válidos.");
-        }
+        const messages: Record<number, string> = {
+          400: "Hay datos inválidos en el pedido.",
+          401: "Debes iniciar sesión.",
+          404: "El pedido o algún producto ya no existe.",
+          409: "Hubo un conflicto. Actualiza la página.",
+        };
 
         throw new Error(
-          `No se pudo actualizar (HTTP ${response.status}).`
+          messages[response.status] ??
+            `No se pudo guardar (HTTP ${response.status}).`
         );
       }
 
       setEditing(false);
-      setSuccess("Pedido actualizado.");
       router.refresh();
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
-          : "No se pudo actualizar el pedido."
+          : "No se pudo guardar el pedido."
       );
     } finally {
       setBusy(false);
@@ -84,17 +234,18 @@ export function OrderActions({ order }: Props) {
   }
 
   async function remove() {
-    if (busy) return;
+    if (busy || loading) return;
 
-    const confirmed = window.confirm(
-      `¿Eliminar permanentemente el pedido ${order.number}?\n\nEsta acción no se puede deshacer.`
-    );
-
-    if (!confirmed) return;
+    if (
+      !window.confirm(
+        `¿Eliminar permanentemente ${order.number}? Esta acción no se puede deshacer.`
+      )
+    ) {
+      return;
+    }
 
     setBusy(true);
     setError("");
-    setSuccess("");
 
     try {
       const response = await fetch(
@@ -102,35 +253,24 @@ export function OrderActions({ order }: Props) {
         {
           method: "DELETE",
           credentials: "same-origin",
-          cache: "no-store",
         }
       );
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Tu sesión ha expirado.");
-        }
-        if (response.status === 404) {
-          throw new Error("El pedido ya no existe.");
-        }
-        if (response.status === 409) {
-          throw new Error(
-            "El pedido no puede eliminarse por un conflicto de datos."
-          );
-        }
-
         throw new Error(
-          `No se pudo eliminar (HTTP ${response.status}).`
+          response.status === 401
+            ? "Debes iniciar sesión."
+            : `No se pudo eliminar (HTTP ${response.status}).`
         );
       }
 
-      setSuccess("Pedido eliminado.");
+      setEditing(false);
       router.refresh();
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
-          : "No se pudo eliminar el pedido."
+          : "No se pudo eliminar."
       );
     } finally {
       setBusy(false);
@@ -142,45 +282,46 @@ export function OrderActions({ order }: Props) {
       <div className="flex justify-end gap-2">
         <button
           type="button"
-          data-testid={`order-edit-${order.id}`}
-          disabled={busy}
+          disabled={busy || loading}
           onClick={() => {
-            setEditing((previous) => !previous);
-            setName(order.customerName);
-            setEmail(order.customerEmail);
-            setError("");
-            setSuccess("");
+            if (editing) {
+              setEditing(false);
+              setError("");
+            } else {
+              void openEditor();
+            }
           }}
-          className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-[11px] text-zinc-300 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+          data-testid={`order-edit-${order.id}`}
+          className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-[11px] text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
         >
-          Editar
+          {loading ? "Cargando..." : editing ? "Cerrar" : "Editar"}
         </button>
 
         <button
           type="button"
-          data-testid={`order-delete-${order.id}`}
-          disabled={busy}
+          disabled={busy || loading}
           onClick={() => void remove()}
-          className="rounded-md border border-rose-900/60 px-2.5 py-1.5 text-[11px] text-rose-400 transition-colors hover:bg-rose-950/40 disabled:opacity-50"
+          data-testid={`order-delete-${order.id}`}
+          className="rounded-md border border-rose-900/60 px-2.5 py-1.5 text-[11px] text-rose-400 hover:bg-rose-950/40 disabled:opacity-50"
         >
           Eliminar
         </button>
       </div>
 
-      {editing && (
+      {editing && !loading && (
         <form
-          data-testid={`order-edit-form-${order.id}`}
           onSubmit={(event) => void save(event)}
-          className="mt-3 space-y-3 rounded-md border border-zinc-700 bg-zinc-950 p-3 text-left"
+          data-testid={`order-edit-form-${order.id}`}
+          className="mt-3 w-[min(380px,75vw)] space-y-3 rounded-md border border-zinc-700 bg-zinc-950 p-3 text-left"
         >
           <label className="block text-[11px] text-zinc-400">
-            Nombre del cliente
+            Cliente
             <input
               required
               maxLength={150}
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="mt-1.5 w-full rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-2 text-xs text-zinc-100 outline-none focus:border-indigo-500"
+              className={`mt-1 ${inputClass}`}
             />
           </label>
 
@@ -191,40 +332,119 @@ export function OrderActions({ order }: Props) {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="mt-1.5 w-full rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-2 text-xs text-zinc-100 outline-none focus:border-indigo-500"
+              className={`mt-1 ${inputClass}`}
             />
           </label>
 
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setEditing(false)}
-              className="rounded-md border border-zinc-700 px-2.5 py-2 text-[11px] text-zinc-400"
-            >
-              Cancelar
-            </button>
+          <div className="border-t border-zinc-800 pt-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-medium text-zinc-200">
+                Artículos
+              </span>
 
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded-md bg-zinc-100 px-2.5 py-2 text-[11px] font-medium text-zinc-950 hover:bg-white disabled:opacity-50"
-            >
-              {busy ? "Guardando..." : "Guardar"}
-            </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  setItems((previous) => [
+                    ...previous,
+                    { productId: "", quantity: 1 },
+                  ])
+                }
+                className="text-[11px] text-zinc-400 hover:text-white"
+              >
+                + Agregar
+              </button>
+            </div>
+
+            <div className="max-h-56 space-y-2 overflow-y-auto">
+              {items.map((item, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-[minmax(0,1fr)_65px_26px] gap-1.5"
+                >
+                  <select
+                    aria-label={`Producto ${index + 1}`}
+                    required
+                    value={item.productId}
+                    disabled={busy}
+                    onChange={(event) =>
+                      updateItem(index, {
+                        productId: event.target.value,
+                      })
+                    }
+                    className={inputClass}
+                  >
+                    <option value="">Seleccionar...</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.sku} · {product.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    aria-label={`Cantidad ${index + 1}`}
+                    required
+                    type="number"
+                    min={1}
+                    max={999}
+                    step={1}
+                    value={item.quantity}
+                    disabled={busy}
+                    onChange={(event) =>
+                      updateItem(index, {
+                        quantity: Number(event.target.value),
+                      })
+                    }
+                    className={inputClass}
+                  />
+
+                  <button
+                    type="button"
+                    aria-label={`Quitar artículo ${index + 1}`}
+                    disabled={busy || items.length === 1}
+                    onClick={() =>
+                      setItems((previous) =>
+                        previous.filter((_, i) => i !== index)
+                      )
+                    }
+                    className="text-sm text-zinc-500 hover:text-rose-400 disabled:opacity-40"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
+
+          <div className="flex items-center justify-between border-t border-zinc-800 pt-3">
+            <span className="text-[11px] text-zinc-500">
+              Total estimado
+            </span>
+            <span className="font-mono text-xs text-zinc-100">
+              {formatCurrency(estimatedTotal)}
+            </span>
+          </div>
+
+          <p className="text-[10px] text-zinc-500">
+            Al guardar artículos, se recalcularán sus precios usando
+            el catálogo actual.
+          </p>
+
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full rounded-md bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-950 hover:bg-white disabled:opacity-50"
+          >
+            {busy ? "Guardando..." : "Guardar pedido"}
+          </button>
         </form>
       )}
 
       {error && (
         <p role="alert" className="mt-2 text-[11px] text-rose-400">
           {error}
-        </p>
-      )}
-
-      {success && (
-        <p role="status" className="mt-2 text-[11px] text-emerald-400">
-          {success}
         </p>
       )}
     </div>
