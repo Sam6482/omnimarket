@@ -15,6 +15,7 @@ Versión 0.1 (propuesta del viernes). Los esquemas Zod de `src/lib/schemas/` son
 |---|---|---|
 | 400 | `VALIDATION_ERROR` | Entrada inválida (Zod) |
 | 401 | `UNAUTHENTICATED` | Ruta privada sin sesión |
+| 403 | `FORBIDDEN` | Operación deshabilitada en el entorno u origen no permitido (`reset-data`) |
 | 404 | `NOT_FOUND` | Recurso inexistente |
 | 409 | `CONFLICT` | Duplicado (SKU) o conflicto de versión |
 | 500 | `INTERNAL_ERROR` | Error no controlado (sin filtrar detalles internos) |
@@ -70,7 +71,15 @@ Errores: 400 si `page`/`limit` son inválidos o `limit > 100`.
 
 ### `POST /api/test/reset-data`
 
-Sin body. Restaura el dataset determinista (semilla fija) dentro de una transacción. Borra y recrea solo `OrderEvent`, `OrderItem`, `Order`, `Product`. **No toca** `User`, `Account`, `Session`. Idempotente: dos llamadas seguidas producen el mismo estado.
+Sin body. Restaura el dataset determinista (semilla fija) dentro de una transacción. Borra y recrea solo `OrderEvent`, `OrderItem`, `Order`, `Product`. **No toca** `User`, `Account`, `Session`. Idempotente: dos llamadas seguidas producen el mismo estado (ids `seed-*`, números `OM-1…OM-1200`; el siguiente pedido creado será `OM-1201`).
+
+Protección del endpoint:
+
+- Solo funciona si el entorno define `RESET_DATA_ENABLED=true` (Vercel producción, CI de E2E y `node scripts/with-neon-dev.mjs dev`). Sin la variable responde **403 `FORBIDDEN`**. **No agregarla a `.env.local`.**
+- Rechaza con 403 las peticiones de navegador desde otro sitio (`Origin` distinto o `Sec-Fetch-Site: cross-site`). curl, Postman, Playwright y la propia app funcionan.
+- Solo acepta `POST` (un `GET` recibe 405).
+- 409 `CONFLICT` si ya hay un reset en curso (no se encola).
+- 500 `INTERNAL_ERROR` sin detalles internos; la transacción revierte todo.
 
 ```json
 { "ok": true, "seed": 42, "counts": { "products": 40, "orders": 1200, "orderItems": 3100 }, "durationMs": 850 }
