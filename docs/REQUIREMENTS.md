@@ -31,12 +31,12 @@ Estados: Pendiente · En desarrollo · Implementado sin verificar · Verificado 
 | U4 | `formatCurrency` MXN desde centavos | Formateador | A | Implementado (`tests/unit/format.test.ts`) |
 | U5 | `orderCreateSchema` válido | Zod | A | Pendiente |
 | U6 | `orderCreateSchema` inválido | Zod | A | Pendiente |
-| U7 | `bulkUpdateSchema` límites y duplicados | Zod | A | Pendiente |
+| U7 | `bulkUpdateSchema` límites y duplicados | Zod | A | Implementado (`tests/unit/bulk-schema.test.ts`) |
 | U8 | `paginationSchema` coerción y límites | Zod | A | Pendiente |
 | U9 | `filterOrders` estado/fechas/texto | Filtrado | B | Pendiente |
 | U10 | `computePosition` reordenamiento Kanban | Lógica | C | Pendiente |
 | I1 | analytics devuelve forma paginada | Integración | A | Pendiente |
-| I2 | bulk hace rollback si falta un id | Integración | A | Pendiente |
+| I2 | bulk hace rollback si falta un id | Integración | A | Implementado (`tests/integration/bulk-update.test.ts`) |
 | I3 | reset-data idempotente | Integración | A | Implementado |
 
 ## Mejoras competitivas (no oficiales)
