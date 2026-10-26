@@ -15,8 +15,8 @@ vi.mock("next-auth", () => ({
     return { auth: mocks.auth, handlers: { GET: vi.fn(), POST: vi.fn() }, signIn: vi.fn(), signOut: vi.fn() };
   },
 }));
-vi.mock("next-auth/providers/google", () => ({ default: { id: "google" } }));
-vi.mock("next-auth/providers/github", () => ({ default: { id: "github" } }));
+vi.mock("next-auth/providers/google", () => ({ default: (options: object) => ({ id: "google", options }) }));
+vi.mock("next-auth/providers/github", () => ({ default: (options: object) => ({ id: "github", options }) }));
 vi.mock("@auth/prisma-adapter", () => ({ PrismaAdapter: () => ({ name: "prisma-adapter" }) }));
 vi.mock("@/server/db", () => ({ prisma: {} }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
@@ -25,7 +25,7 @@ import { requirePageSession, requireSession } from "@/server/auth";
 import { API_ERROR_STATUS, unauthorizedResponse } from "@/server/http/errors";
 
 type AuthConfig = {
-  providers: Array<{ id: string }>;
+  providers: Array<{ id: string; options: { allowDangerousEmailAccountLinking?: boolean } }>;
   session: { strategy: string };
   pages: { signIn: string };
   callbacks: {
@@ -43,6 +43,8 @@ describe("configuración de Auth.js", () => {
   it("usa solo Google y GitHub, sesiones en base de datos y /login", () => {
     const config = mocks.nextAuthConfig as AuthConfig;
     expect(config.providers.map((provider) => provider.id)).toEqual(["google", "github"]);
+    // Ambos verifican el correo: la misma persona puede entrar con cualquiera de los dos.
+    expect(config.providers.every((provider) => provider.options.allowDangerousEmailAccountLinking)).toBe(true);
     expect(config.session.strategy).toBe("database");
     expect(config.pages.signIn).toBe("/login");
   });
