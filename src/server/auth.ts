@@ -24,7 +24,12 @@ export const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  providers: [Google, GitHub],
+  // Google y GitHub verifican los correos: se permite que la misma persona entre con cualquiera
+  // de los dos y llegue a la MISMA cuenta (si no, el segundo proveedor muestra OAuthAccountNotLinked).
+  providers: [
+    Google({ allowDangerousEmailAccountLinking: true }),
+    GitHub({ allowDangerousEmailAccountLinking: true }),
+  ],
   session: { strategy: "database", maxAge: SESSION_MAX_AGE_SECONDS },
   pages: { signIn: "/login", error: "/login" },
   callbacks: {
