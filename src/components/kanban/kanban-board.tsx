@@ -1,9 +1,10 @@
 
 "use client";
 
+import { useToast } from "@/components/ui/toast-provider";
+import { formatCurrency } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import { useState, type DragEvent } from "react";
-import { formatCurrency } from "@/lib/format";
 
 type Status =
   | "PENDING"
@@ -41,15 +42,12 @@ export function KanbanBoard({
   initialOrders: KanbanOrder[];
 }) {
   const router = useRouter();
+  const toast = useToast();
 
   const [orders, setOrders] = useState(initialOrders);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<Status | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
 
   async function moveOrder(id: string, nextStatus: Status) {
     if (pendingId) return;
@@ -61,12 +59,12 @@ export function KanbanBoard({
     const snapshot = orders;
 
     const columnPositions = orders
-  .filter((order) => order.status === nextStatus)
-  .map((order) => order.position);
+      .filter((order) => order.status === nextStatus)
+      .map((order) => order.position);
 
-const nextPosition = columnPositions.length
-  ? Math.min(...columnPositions) - 1000
-  : 1000;
+    const nextPosition = columnPositions.length
+      ? Math.min(...columnPositions) - 1000
+      : 1000;
 
     // La tarjeta se mueve inmediatamente.
     setOrders((previous) =>
@@ -82,7 +80,6 @@ const nextPosition = columnPositions.length
     );
 
     setPendingId(id);
-    setMessage(null);
 
     try {
       const response = await fetch(
@@ -141,21 +138,19 @@ const nextPosition = columnPositions.length
         )
       );
 
-      setMessage({
-        type: "success",
-        text: `${currentOrder.number} actualizado correctamente.`,
-      });
+      toast.success(
+        `${currentOrder.number} actualizado correctamente.`
+      );
     } catch (error) {
       // Si el servidor rechaza el cambio, revertimos la tarjeta.
       setOrders(snapshot);
 
-      setMessage({
-        type: "error",
-        text:
-          error instanceof Error
-            ? error.message
-            : "No se pudo mover el pedido.",
-      });
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo mover el pedido.";
+
+      toast.error(message);
 
       // Recupera datos actualizados si hubo un conflicto.
       router.refresh();
@@ -191,28 +186,6 @@ const nextPosition = columnPositions.length
 
   return (
     <div className="space-y-4">
-      {message && (
-        <div
-          role={message.type === "error" ? "alert" : "status"}
-          className={[
-            "flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs",
-            message.type === "error"
-              ? "border-rose-900/70 bg-rose-950/30 text-rose-300"
-              : "border-emerald-900/70 bg-emerald-950/20 text-emerald-300",
-          ].join(" ")}
-        >
-          <span>{message.text}</span>
-          <button
-            type="button"
-            onClick={() => setMessage(null)}
-            className="text-sm"
-            aria-label="Cerrar aviso"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
       <div className="flex gap-3 overflow-x-auto pb-4">
         {COLUMNS.map((column) => {
           const columnOrders = orders

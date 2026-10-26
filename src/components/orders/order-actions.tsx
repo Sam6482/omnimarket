@@ -1,9 +1,10 @@
 
 "use client";
 
+import { useToast } from "@/components/ui/toast-provider";
+import { formatCurrency } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { formatCurrency } from "@/lib/format";
 
 type Product = {
   id: string;
@@ -40,6 +41,7 @@ const inputClass =
 
 export function OrderActions({ order }: Props) {
   const router = useRouter();
+  const toast = useToast();
 
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -221,16 +223,21 @@ function normalizeItems(lines: OrderItem[]) {
       }
 
       setEditing(false);
+      toast.success("Pedido actualizado correctamente.");
       router.refresh();
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "No se pudo guardar el pedido."
-      );
-    } finally {
-      setBusy(false);
-    }
+
+      } catch (cause) {
+  const message =
+    cause instanceof Error
+      ? cause.message
+      : "No se pudo guardar el pedido.";
+
+  setError(message);
+  toast.error(message);
+} finally {
+  setBusy(false);
+}
+
   }
 
   async function remove() {
@@ -265,16 +272,21 @@ function normalizeItems(lines: OrderItem[]) {
       }
 
       setEditing(false);
+      toast.success("Pedido eliminado correctamente.");
       router.refresh();
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "No se pudo eliminar."
-      );
-    } finally {
-      setBusy(false);
-    }
+
+      } catch (cause) {
+  const message =
+    cause instanceof Error
+      ? cause.message
+      : "No se pudo eliminar.";
+
+  setError(message);
+  toast.error(message);
+} finally {
+  setBusy(false);
+}
+
   }
 
   return (

@@ -1,9 +1,10 @@
 
 "use client";
 
+import { useToast } from "@/components/ui/toast-provider";
+import { formatCurrency } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { formatCurrency } from "@/lib/format";
 
 type Product = {
   id: string;
@@ -24,6 +25,7 @@ type Props = {
 
 export function OrderForm({ onClose }: Props) {
   const router = useRouter();
+  const toast = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<Item[]>([
@@ -164,18 +166,20 @@ export function OrderForm({ onClose }: Props) {
           `No se pudo crear el pedido (HTTP ${response.status}).`
         );
       }
-
+      toast.success("Pedido creado correctamente.");
       router.refresh();
       onClose();
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "No se pudo crear el pedido."
-      );
-    } finally {
-      setSaving(false);
-    }
+  const message =
+    cause instanceof Error
+      ? cause.message
+      : "No se pudo crear el pedido.";
+
+  setError(message);
+  toast.error(message);
+} finally {
+  setSaving(false);
+}
   }
 
   const inputClass =
