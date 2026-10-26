@@ -159,6 +159,18 @@ jobs:
           check 405 GET  "/api/test/reset-data"
           check 401 GET  "/api/products"
           # Página privada sin sesión: debe redirigir a /login.
-          location=$(curl -s -o /dev/null -w "%{redirect_url}" "$PRODUCTION_URL/kanban")
-          echo "GET /kanban -> redirige a: $location"
-          case "$location" in *"/login"*) ;; *) echo "No redirige a /login"; exit 1 ;; esac
+          # Sin loading.tsx la redirección es del servidor (307 + Location). Con loading.tsx
+          # Next.js transmite primero el skeleton y redirige en el navegador (meta refresh).
+          # Se aceptan ambas, y se exige que la respuesta no incluya datos de pedidos.
+          body=$(mktemp)
+          location=$(curl -s -o "$body" -w "%{redirect_url}" "$PRODUCTION_URL/kanban")
+          if [[ "$location" == *"/login"* ]]; then
+            echo "GET /kanban -> redirección del servidor a $location"
+          elif grep -q 'url=/login' "$body"; then
+            echo "GET /kanban -> redirección del navegador a /login (streaming con loading.tsx)"
+          else
+            echo "GET /kanban no redirige a /login"; exit 1
+          fi
+          if grep -qE 'OM-[0-9]+' "$body"; then
+            echo "GET /kanban sin sesión expuso números de pedido"; exit 1
+          fi
