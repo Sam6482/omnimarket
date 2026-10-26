@@ -19,7 +19,7 @@ export default async function KanbanPage() {
     "CANCELLED",
   ] as const;
 
-  const [pages, totalOrders] = await Promise.all([
+  const [pages, totalOrders, statusCounts] = await Promise.all([
   Promise.all(
     statuses.map((status) =>
       prisma.order.findMany({
@@ -39,8 +39,24 @@ export default async function KanbanPage() {
       })
     )
   ),
-  prisma.order.count(),
+    prisma.order.count(),
+  prisma.order.groupBy({
+    by: ["status"],
+    _count: { _all: true },
+  }),
 ]);
+
+const totals = {
+  PENDING: 0,
+  PROCESSING: 0,
+  SHIPPED: 0,
+  DELIVERED: 0,
+  CANCELLED: 0,
+};
+
+for (const group of statusCounts) {
+  totals[group.status] = group._count._all;
+}
 
   const orders = pages.flat().map((order) => ({
     id: order.id,
@@ -67,8 +83,11 @@ export default async function KanbanPage() {
             </h1>
 
             <p className="mt-1 text-xs text-zinc-500">
-              Arrastra pedidos entre etapas o utiliza el selector
-              de cada tarjeta.
+            Arrastra pedidos entre etapas o utiliza el selector de cada tarjeta.
+            </p>
+
+            <p className="mt-1 text-xs text-zinc-500">
+            Se muestran los primeros 50 pedidos de cada columna.
             </p>
           </div>
           <span
@@ -85,7 +104,7 @@ export default async function KanbanPage() {
 </span>
         </div>
 
-        <KanbanBoard initialOrders={orders} />
+        <KanbanBoard initialOrders={orders} columnTotals={totals} />
       </div>
     </main>
   );
