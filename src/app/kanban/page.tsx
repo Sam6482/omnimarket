@@ -1,8 +1,8 @@
 
-import { prisma } from "@/server/db";
-import { formatOrderNumber } from "@/lib/order-number";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
+import { formatOrderNumber } from "@/lib/order-number";
 import { requirePageSession } from "@/server/auth";
+import { prisma } from "@/server/db";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,8 @@ export default async function KanbanPage() {
     "CANCELLED",
   ] as const;
 
-  const pages = await Promise.all(
+  const [pages, totalOrders] = await Promise.all([
+  Promise.all(
     statuses.map((status) =>
       prisma.order.findMany({
         where: { status },
@@ -37,7 +38,9 @@ export default async function KanbanPage() {
         take: 50,
       })
     )
-  );
+  ),
+  prisma.order.count(),
+]);
 
   const orders = pages.flat().map((order) => ({
     id: order.id,
@@ -68,10 +71,18 @@ export default async function KanbanPage() {
               de cada tarjeta.
             </p>
           </div>
-
-          <span className="rounded-md border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-mono text-xs text-zinc-400">
-            {orders.length} pedidos cargados
-          </span>
+          <span
+  data-testid="kanban-total-counter"
+  className="rounded-md border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-mono text-xs text-zinc-400">
+  <span className="font-semibold text-zinc-100">
+    {orders.length}
+  </span>
+  {" de "}
+  <span className="font-semibold text-zinc-100">
+    {totalOrders}
+  </span>
+  {" pedidos"}
+</span>
         </div>
 
         <KanbanBoard initialOrders={orders} />
