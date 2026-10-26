@@ -38,13 +38,17 @@ const COLUMNS: {
 
 export function KanbanBoard({
   initialOrders,
+  columnTotals,
 }: {
   initialOrders: KanbanOrder[];
+  columnTotals: Record<Status, number>;
 }) {
+
   const router = useRouter();
   const toast = useToast();
 
   const [orders, setOrders] = useState(initialOrders);
+  const [totals, setTotals] = useState(columnTotals);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<Status | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -137,6 +141,19 @@ export function KanbanBoard({
             : order
         )
       );
+
+      // Actualizamos los totales únicamente cuando el servidor
+// confirma que el pedido cambió de estado.
+if (result.status !== currentOrder.status) {
+  setTotals((previous) => ({
+    ...previous,
+    [currentOrder.status]: Math.max(
+      0,
+      previous[currentOrder.status] - 1
+    ),
+    [result.status]: previous[result.status] + 1,
+  }));
+}
 
       toast.success(
         `${currentOrder.number} actualizado correctamente.`
@@ -234,9 +251,14 @@ export function KanbanBoard({
                   </h2>
                 </div>
 
-                <span className="rounded-md bg-zinc-800 px-2 py-0.5 font-mono text-[11px] text-zinc-400">
-                  {columnOrders.length}
+
+                <span
+                data-testid={`kanban-count-${column.status}`}
+                className="rounded-md bg-zinc-800 px-2 py-0.5 font-mono text-[11px] text-zinc-400"
+                >
+                {columnOrders.length} de {totals[column.status]}
                 </span>
+
               </header>
 
               <div className="flex-1 space-y-2 p-2">
