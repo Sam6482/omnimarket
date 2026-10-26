@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useToast } from "@/components/ui/toast-provider";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import type { InventoryProduct } from "./inventory-table";
@@ -19,9 +20,11 @@ function pesosToCents(value: string) {
 
 export function ProductActions({ product }: Props) {
   const router = useRouter();
+  const toast = useToast();
 
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -99,28 +102,24 @@ export function ProductActions({ product }: Props) {
 
       setEditing(false);
       setSuccess("Producto actualizado.");
+      toast.success("Producto actualizado correctamente.");
       router.refresh();
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "No se pudo actualizar el producto."
-      );
-    } finally {
-      setBusy(false);
-    }
+
+      } catch (cause) {
+  const message =
+    cause instanceof Error
+      ? cause.message
+      : "No se pudo actualizar el producto.";
+
+  setError(message);
+  toast.error(message);
+} finally {
+  setBusy(false);
+}
   }
 
   async function remove() {
     if (busy) return;
-
-    if (
-      !window.confirm(
-        `¿Eliminar "${product.name}" (${product.sku})? Esta acción no se puede deshacer.`
-      )
-    ) {
-      return;
-    }
 
     setBusy(true);
     setError("");
@@ -150,18 +149,29 @@ export function ProductActions({ product }: Props) {
         throw new Error(`No se pudo eliminar (HTTP ${response.status}).`);
       }
 
+      setShowDeleteConfirm(false);
       setSuccess("Producto eliminado.");
+      toast.success("Producto eliminado correctamente.");
       router.refresh();
-    } catch (cause) {
-      setError(
+      
+      } catch (cause) {
+      const message =
         cause instanceof Error
           ? cause.message
-          : "No se pudo eliminar el producto."
-      );
-    } finally {
+          : "No se pudo eliminar el producto.";
+
+      setError(message);
+      toast.error(message);
+      } finally {
       setBusy(false);
-    }
+      }
+      }
+
+function cancelDelete() {
+  if (!busy) {
+    setShowDeleteConfirm(false);
   }
+}
 
   return (
     <div className="min-w-[145px] space-y-2">
@@ -183,7 +193,7 @@ export function ProductActions({ product }: Props) {
         <button
           type="button"
           data-testid={`product-delete-${product.id}`}
-          onClick={() => void remove()}
+          onClick={() => setShowDeleteConfirm(true)}
           disabled={busy}
           className="rounded-md border border-rose-900/60 px-2 py-1.5 text-[11px] text-rose-400 hover:bg-rose-950/40 disabled:opacity-50"
         >
@@ -264,6 +274,66 @@ export function ProductActions({ product }: Props) {
           {success}
         </p>
       )}
+    {showDeleteConfirm && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4">
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby={`delete-title-${product.id}`}
+      aria-describedby={`delete-description-${product.id}`}
+      className="w-full max-w-md rounded-xl border border-zinc-700 bg-[#18181B] p-6 shadow-2xl"
+    >
+      <div className="mb-4 flex items-center gap-3">
+        <div className="rounded-lg bg-rose-500/10 p-3 text-rose-400">
+          🗑️
+        </div>
+
+        <div>
+          <h2
+            id={`delete-title-${product.id}`}
+            className="text-lg font-semibold text-zinc-100"
+          >
+            ¿Eliminar producto?
+          </h2>
+
+          <p className="text-xs text-zinc-400">
+            Esta acción no se puede deshacer.
+          </p>
+        </div>
+      </div>
+
+      <p
+        id={`delete-description-${product.id}`}
+        className="mb-6 text-sm leading-relaxed text-zinc-300"
+      >
+        ¿Estás segura de que deseas eliminar{" "}
+        <strong className="text-white">{product.name}</strong>{" "}
+        ({product.sku})?
+      </p>
+
+      <div className="flex justify-end gap-3 border-t border-zinc-700 pt-4">
+        <button
+          type="button"
+          onClick={cancelDelete}
+          disabled={busy}
+          className="rounded-md border border-zinc-600 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-700 disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void remove()}
+          disabled={busy}
+          className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:opacity-50"
+        >
+          {busy ? "Eliminando..." : "Sí, eliminar"}
+        </button>
+      </div>
     </div>
+  </div>
+
+)}
+</div>
   );
 }

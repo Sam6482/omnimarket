@@ -7,6 +7,8 @@ import { formatCurrency } from "@/lib/format";
 import { BULK_MAX_IDS } from "@/lib/schemas/bulk";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useToast } from "@/components/ui/toast-provider";
+
 
 type OrderStatus =
   | "PENDING"
@@ -70,6 +72,7 @@ export function OrdersTable({
   status,
 }: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [search, setSearch] = useState(query);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -148,17 +151,28 @@ export function OrdersTable({
 
       const updated = typeof result.updated === "number" ? result.updated : 0;
       const unchanged = typeof result.unchanged === "number" ? result.unchanged : 0;
+
+            const successMessage = `Operación completada: ${updated} actualizado(s) y ${unchanged} sin cambios.`;
+
       setSelectedIds([]);
       setBulkMessage({
         type: "success",
-        text: `Operación completada: ${updated} actualizado(s) y ${unchanged} sin cambios.`,
+        text: successMessage,
       });
+      toast.success(successMessage);
       router.refresh();
-    } catch (error) {
+
+        } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "No se pudieron actualizar los pedidos.";
+
       setBulkMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "No se pudo actualizar los pedidos.",
+        text: errorMessage,
       });
+      toast.error(errorMessage);
     } finally {
       setIsBulkUpdating(false);
     }

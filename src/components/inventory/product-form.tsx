@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useToast } from "@/components/ui/toast-provider";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -32,6 +33,7 @@ function moneyToCents(value: string): number {
 
 export function ProductForm({ onClose }: ProductFormProps) {
   const router = useRouter();
+  const toast = useToast();
 
   const [fields, setFields] = useState(initialValues);
   const [saving, setSaving] = useState(false);
@@ -97,17 +99,21 @@ export function ProductForm({ onClose }: ProductFormProps) {
         throw new Error("No fue posible guardar el producto.");
       }
 
+      toast.success("Producto creado correctamente.");
       router.refresh();
       onClose();
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Ocurrió un error inesperado."
-      );
-    } finally {
-      setSaving(false);
-    }
+    
+      } catch (cause) {
+  const message =
+    cause instanceof Error
+      ? cause.message
+      : "Ocurrió un error inesperado.";
+
+  setError(message);
+  toast.error(message);
+} finally {
+  setSaving(false);
+}
   }
 
   return (
