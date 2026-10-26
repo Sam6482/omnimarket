@@ -83,10 +83,11 @@ export function ToastProvider({
         className="pointer-events-none fixed right-4 top-20 z-50 flex w-[calc(100%-2rem)] max-w-sm flex-col gap-3"
       >
         {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            role={toast.type === "error" ? "alert" : "status"}
-            className={[
+  <div
+    key={toast.id}
+    data-testid={toast.type === "success" ? "toast-success" : "toast-error"}
+    role={toast.type === "error" ? "alert" : "status"}
+    className={[
               "pointer-events-auto flex items-start gap-3",
               "rounded-xl border bg-[#18181B] p-4",
               "shadow-2xl shadow-black/40",
